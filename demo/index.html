@@ -3,12 +3,41 @@
   <head>
     <meta charset="utf-8">
     <title>ScreenSlider</title>
+    <style>
+      *{margin:0;padding:0;}
+      html,body,.container{
+        height:100%;
+        overflow: hidden;
+      }
+    </style>
   </head>
   <body>
-    <div class="container">
-      <div class="item">
-          <div class="item-1" toggler-desktop="movein"></div>
+    <div class="container" id="container">
+      <div class="item" style="background:#ccc;">
+          <div class="a item-1-1" toggler-desktop="translate"></div>
+          <div class="a item-1-2" toggler-desktop="translate"></div>
+          <div class="a item-1-3" toggler-desktop="translate"></div>
+          <div class="a item-1-4" toggler-desktop="translate"></div>
+          <div class="a item-1-5" toggler-desktop="translate"></div>
+          <div class="a item-1-6" toggler-desktop="translate"></div>
+      </div>
+      <div class="item" style="background:#f00;">
+          <div class="a item-2-1" toggler-desktop="scale"></div>
+          <div class="a item-2-2" toggler-desktop="scale"></div>
+          <div class="a item-2-3" toggler-desktop="scale"></div>
+          <div class="a item-2-4" toggler-desktop="scale"></div>
+          <div class="a item-2-5" toggler-desktop="scale"></div>
+      </div>
+      <div class="item" style="background:#f0f;">
+          <div class="a item-3-1" toggler-desktop="translate"></div>
+          <div class="b item-3-2" toggler-desktop="translate"></div>
+          <div class="c item-3-3" toggler-desktop="translate"></div>
+          <div class="d item-3-4" toggler-desktop="translate"></div>
       </div>
     </div>
+    <script src="../src/screenSlider.js"></script>
+    <script>
+      new ScreenSlider({repeat:true});
+    </script>
   </body>
 </html>
