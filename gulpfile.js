@@ -1,10 +1,11 @@
 var gulp = require('gulp'),
-	uglify = require("gulp-uglify"),
+	  uglify = require("gulp-uglify"),
     jshint = require("gulp-jshint"),
-    rename = require('gulp-rename');
+    rename = require('gulp-rename'),
+		clean = require('gulp-clean');
 
 gulp.task('clean', function() {
-  return gulp.src(['dist/'], {read: false})
+  return gulp.src(['dist/*'], {read: false})
       .pipe(clean());
 });
 
@@ -17,10 +18,9 @@ gulp.task('jshint', function () {
 gulp.task('uglify',function(){
 	return gulp.src('src/screenSlider.js')
 			 .pipe(gulp.dest('dist'))
-			 .pipe(rename({suffix:'min'}))
+			 .pipe(uglify())
+			 .pipe(rename({suffix:'.min'}))
 			 .pipe(gulp.dest('dist'))
 });
 
-gulp.task('default', ['jshint','uglify']);
-
-
+gulp.task('default', ['clean','jshint','uglify']);

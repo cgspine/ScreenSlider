@@ -1,7 +1,6 @@
 (function(global,DOC){
 
 	var W3C = DOC.dispatchEvent;
-	var ielow = '\v' == 'v' || global.msPerformance;
 	var hasOwn = Object.prototype.hasOwnProperty;
 	var isMobile = /iPad|iPhone|android/i.test(navigator.userAgent);
 
@@ -89,9 +88,7 @@
     addClass=function(el,c){el.classList.add(c);}
     removeClass=function(el,c){el.classList.remove(c);}
   }else{
-    hasClass=function(el,c){
-			return classReg(c).test(el.className);
-		}
+    hasclass=function(el,c){classReg(c).test(el.className);}
     addClass=function(el,c){
       if(!hasClass(el,c)){
         el.className +=' '+c;
@@ -117,15 +114,6 @@
 		},delay);
 	}
 
-	function getEvent(event){
-		return event ? event : window.event;
-	}
-
-	function getTarget(event){
-		event = getEvent(event);
-		return event.target || event.srcElement;
-	}
-
 	function ScreenSlider(opts){
 		  opts = opts || {};
 			this.$container = getById(opts.container||'container');//container
@@ -146,6 +134,7 @@
 			this._plantform = isMobile?'mobile':'desktop';
 
 			this._factory = [];
+
 			this.init();
 			this.handerTouch();
 			this.on('onPresent',this.onPresent);
@@ -156,8 +145,6 @@
 		this._size = this.orientation === 'vertical'? this.$container.offsetHeight : this.$container.offsetWidth;
 		this.plantform = isMobile?'mobile':'desktop';
 		this.present(this._current,'noop',true);
-		console.log(ielow);
-		console.log(global.msPerformance);
 	}
 
 	ScreenSlider.prototype.present = function(i,type,immediate){
@@ -175,7 +162,7 @@
 		addClass(item,this.activeClass);
 		var anim = this.transform();
 		anim[type](item);
-		that.toggler(item,'present',immediate);
+		that.toggler(item,'present');
 	}
 
 	ScreenSlider.prototype.dismiss = function (i,type) {
@@ -189,22 +176,16 @@
 	ScreenSlider.prototype.toggler = function(el,type,immediate){
 		var that = this;
 		var childrens = getByToggler(el,this._plantform);
-		if(immediate){
-			handle();
-		}else{
-			setTimeout(handle,this.duration);
-		}
-
-		function handle(){
-			for(i=0;i<childrens.length;i++){
-				var child = childrens[i];
-				var clazz = child.getAttribute('toggler-'+that._plantform);
-				clazz = clazz.split(" ");
-				for(var j=0;j<clazz.length;j++){
-					var cl = clazz[j];
-					if(cl == ''){
-						continue;
-					}
+		for(i=0;i<childrens.length;i++){
+			var child = childrens[i];
+			var clazz = child.getAttribute('toggler-'+this._plantform);
+			clazz = clazz.split(" ");
+			for(var i=0;i<clazz.length;i++){
+				var cl = clazz[i];
+				if(cl == ''){
+					continue;
+				}
+				if(immediate){
 					if(type === 'present'){
 						addClass(child,cl);
 						that.emit('onPresent',that._current);
@@ -212,7 +193,18 @@
 						removeClass(child,cl);
 						that.emit('onDismiss',i);
 					}
+				}else{
+					setTimeout(function(){
+						if(type === 'present'){
+							addClass(child,cl);
+							that.emit('onPresent',that._current);
+						}else{
+							removeClass(child,cl);
+							that.emit('onDismiss',i);
+						}
+					},this.duration);
 				}
+
 			}
 		}
 	}
@@ -268,15 +260,14 @@
 			debounce(that.resizeDelay,function(){
 				that.toggler(that.$items[that._current],'dismiss');
 				that._itemsState = [];
-				setTimeout(function(){
-					that.init();
-				},0);
+				that.init();
 				that.onResize();
 			});
 		})
 	}
 
 	//动画
+
 	ScreenSlider.prototype.moveTo = function(target,edgeChange){
 		if(target == -1){
 			return;
@@ -291,26 +282,6 @@
 
 	ScreenSlider.prototype.transform  = function(){
 		var that = this;
-		if(ielow){
-			return {
-				frontIn:function(item){
-					that.animByPosition(item,that._size,0);
-				},
-				frontOut:function(item){
-					that.animByPosition(item,0,that._size);
-				},
-				backIn:function(item){
-					that.animByPosition(item,-1*that._size,0);
-				},
-				backOut:function(item){
-					that.animByPosition(item,0,-1*that._size);
-				},
-				noop :function(item){
-						item.style.left = '0px';
-						item.style.top = '0px';
-				}
-			}
-		}
 		return {
 			frontIn:function(item){
 				that.animByTransform(item,that._size,0);
@@ -324,77 +295,56 @@
 			backOut:function(item){
 				that.animByTransform(item,0,-1*that._size);
 			},
-			noop :function(item){
+			noop :function(item,size){
 					var transform = 'translate3d(0, 0, 0)';
 					transformWriter(item,transform);
 			}
 		}
 	}
 
-	ScreenSlider.prototype.animByPosition = function(item,start,end){
-		var that = this;
-		if(this.orientation === 'vertical'){
-			item.style.left="0px";
-			animByPosition(item,'top',start,end,1,this.duration);
-		}else{
-			item.style.top="0px";
-			animByPosition(item,'left',start,end,2,this.duration);
-		}
-	}
-
 	ScreenSlider.prototype.animByTransform = function(item,start,end){
 		var that = this;
 		if(this.orientation === 'vertical'){
-			var transformStr = 'translate3d(0, ' + start + 'px, 0)';
-			transformWriter(item,transformStr);
+			var transform = 'translate3d(0, ' + start + 'px, 0)';
+			transformWriter(item,transform);
 			transitionWriter(item,0);
 			//先要初始化位置
 			//var tmp = item.style.transform;//读一次元素，强制刷新界面，直接这样不起作用。。
 			setTimeout(function(){
-				transformStr = 'translate3d(0, ' + end + 'px, 0)';
+				transform = 'translate3d(0, ' + end + 'px, 0)';
+				transformWriter(item,transform);
 				transitionWriter(item,that.duration);
-				transformWriter(item,transformStr);
 			},10) //给一定的时间确保初始化位置完成
 
 		}else{
-			var transformStr = 'translate3d('+ start +'px, 0, 0)';
+			var transform = 'translate3d('+ start +'px, 0, 0)';
 			transitionWriter(item,0);
-			transformWriter(item,transformStr);
+			transformWriter(item,transform);
 			setTimeout(function(){
-				transformStr = 'translate3d('+ end +'px, 0, 0)';
+				transform = 'translate3d('+ end +'px, 0, 0)';
+				transformWriter(item,transform);
 				transitionWriter(item,that.duration);
-				transformWriter(item,transformStr);
 			},10)
 
 		}
 	}
+
 	function transformWriter(item,transform){
 		item.style['-webkit-transform'] = transform;
-		item.style['-ms-transform'] = transform;
 		item.style.transform = transform;
 	}
 	function transitionWriter(item,duration){
 		item.style['-webkit-transition'] = duration + 'ms';
-		item.style['-ms-transition'] = duration + 'ms';
 		item.style.transition = duration + 'ms';
 	}
 
-	function animByPosition(item,type,start,end,speed,duration){
-		var cellTime =  duration/speed;
-		var style = item.style;
-		style[type] = start + 'px';
-		speed = (start>end && speed>0) ? -1*speed : (speed<0?-1*speed:speed);
-		var positive = speed >0 ? true : false;
-		var animator = setTimeout(function(){
-			start += speed;
-			style[type] = start + 'px';
-			if((start>=end && positive)||(start<=end && !positive)){
-				style[type] = end + 'px';
-				clearTimeout(animator);
-				animator = null;
-			}
-		},cellTime);
+	function getEvent(event){
+		return event ? event : window.event;
+	}
 
+	function getTarget(event){
+		event = getEvent(event);
+		return event.target || event.srcElement;
 	}
 
 	global.ScreenSlider = ScreenSlider;
