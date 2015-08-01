@@ -64,26 +64,6 @@
       var mScreenSlider = new ScreenSlider({
         repeat:true
       });
-      var dom = document;
-      var tool = window.tool;
-      var pager = tool.getById("pager");
-      var pagerList = tool.getByClass(pager,"pager-list-item");
-      var pagerIndicator = tool.getByClass(pager,"pager-current-indicator")[0];
-      var current = mScreenSlider.current;
-      var indecatorTop = 40*current;
-      pagerIndicator.style.top = indecatorTop + 'px';
-      pagerIndicator.style.display = "block";
-      console.log(pagerList);
-      for(var i=0;i<pagerList.length;i++){
-        (function(){
-              var j=i;
-              var item = pagerList[j];
-            item.onclick = function(){
-              tool.animByPosition(pagerIndicator,'top',40*mScreenSlider.current,40*j,2,30);
-              mScreenSlider.moveTo(j);
-            }
-        })();
-      }
     </script>
   </body>
 </html>

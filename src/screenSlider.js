@@ -115,7 +115,12 @@
 			this.repeat = opts.repeat || false; //是否可以从最后一页回到第一页
 			this.duration = opts.duration || 500;
 			this.resizeDelay = opts.resizeDelay || 30;
+
 			this.pager = getById(opts.pager || 'pager');
+			this.pagerDistance = opts.pagerParam || 40;
+			this.pagerOrientation = opts.pagerOrientation || 'vertical';
+			this.pagerIndicator = this.pager && getByClass(this.pager,"pager-current-indicator")[0];
+
 
 			this.current = 0;
 
@@ -126,16 +131,17 @@
 
 			this._factory = [];
 			this.init();
-			this.handerTouch();
-			this.on('onPresent',this.onPresent);
-			this.on('onDismiss',this.onDismiss);
 	}
 
 	ScreenSlider.prototype.init = function(){
 		this._size = this.orientation === 'vertical'? this.$container.offsetHeight : this.$container.offsetWidth;
 		this.plantform = isMobile?'mobile':'desktop';
 		this.present(this.current,'noop',true);
-		console.log(ielow);
+
+		this.handerTouch();
+		this.handlerPager();
+		this.on('onPresent',this.onPresent);
+		this.on('onDismiss',this.onDismiss);
 	}
 
 	ScreenSlider.prototype.present = function(i,type,immediate){
@@ -242,9 +248,8 @@
 								(that.repeat?that._length-1:-1):target>=that._length?
 									(that.repeat?0:-1):target; //target 返回-1则不做任何变化
 
-			that.moveTo(target,edgeChange);
+			that.pagerTo(target,edgeChange);
 		});
-
 		bind(global,'resize',function(e){
 			debounce(that.resizeDelay,function(){
 				that.toggler(that.$items[that.current],'dismiss');
@@ -261,8 +266,20 @@
 		if(!this.pager){
 			return;
 		}
+		var that = this;
 		var pagerList = getByClass(this.pager,"pager-list-item");
-		var pagerIndicator =getByClass(this.pager,"pager-current-indicator")[0];
+		var type = this.pagerOrientation == "horizontal"?"left" : "top";
+		this.pagerIndicator.style.top = this.current * this.pagerDistance + 'px';
+		this.pagerIndicator.style.display = "block";
+		for(var i=0;i<pagerList.length;i++){
+			(function(){
+						var j=i;
+						var item = pagerList[j];
+					item.onclick = function(){
+						that.pagerTo(j);
+					}
+			})();
+		}
 	};
 
 	//动画
@@ -277,6 +294,15 @@
 		this.present(target,pType);
 		this.dismiss(now,dType);
 	}
+
+	ScreenSlider.prototype.pagerTo = function (target,edgeChange) {
+		var type = this.pagerOrientation == "horizontal" ? "left" : 'top';
+		if(this.pagerIndicator){
+			animByPosition(this.pagerIndicator,type,this.pagerDistance*this.current,this.pagerDistance*target,2,30);
+			this.moveTo(target,edgeChange);
+		}
+
+	};
 
 	ScreenSlider.prototype.transform  = function(){
 		var that = this;
