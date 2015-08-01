@@ -80,28 +80,42 @@
       }
     }
   }
-	togglerClass = function(el,c){
-		var fn = hasClass(el,c)?removeClass:addClass;
-		fn(el,c);
-	}
+togglerClass = function(el,c){
+	var fn = hasClass(el,c)?removeClass:addClass;
+	fn(el,c);
+}
 
+var debounce = function(delay,callback){
 	var timer = null;
-	var debounce = function(delay,callback){
+	var args,context;
+	return function(){
+		context = this;
+		args = arguments;
 		clearTimeout(timer);
+
 		timer = setTimeout(function(){
-			callback();
+			callback.apply(context,args);
 			timer = null;
 		},delay);
 	}
+}
 
-	function getEvent(event){
-		return event ? event : window.event;
-	}
+function getEvent(event){
+	return event ? event : window.event;
+}
 
-	function getTarget(event){
-		event = getEvent(event);
-		return event.target || event.srcElement;
+function getTarget(event){
+	event = getEvent(event);
+	return event.target || event.srcElement;
+}
+
+function getWheelDelta (event) {
+	if(event.wheelDelta) {
+	     return  event.wheelDelta;
+	}else {
+	    return -event.detail * 40
 	}
+}
 
 	function ScreenSlider(opts){
 		  opts = opts || {};
@@ -115,6 +129,7 @@
 			this.repeat = opts.repeat || false; //是否可以从最后一页回到第一页
 			this.duration = opts.duration || 500;
 			this.resizeDelay = opts.resizeDelay || 30;
+			this.scrollWheelDelay = opts.scrollWheelDelay || 200;
 
 			this.pager = getById(opts.pager || 'pager');
 			this.pagerDistance = opts.pagerParam || 40;
@@ -127,17 +142,18 @@
 			this._length = this.$items.length;
 			this._size = 0;
 			this._itemsState = [];
-			this._plantform = isMobile?'mobile':'desktop';
-
 			this._factory = [];
 			this.init();
+			this.setup();
 	}
 
 	ScreenSlider.prototype.init = function(){
 		this._size = this.orientation === 'vertical'? this.$container.offsetHeight : this.$container.offsetWidth;
-		this.plantform = isMobile?'mobile':'desktop';
+		this._plantform = this.configPlantform();
 		this.present(this.current,'noop',true);
+	}
 
+	ScreenSlider.prototype.setup = function(){
 		this.handerTouch();
 		this.handlerPager();
 		this.on('onPresent',this.onPresent);
@@ -172,6 +188,7 @@
 
 	ScreenSlider.prototype.toggler = function(el,type,immediate){
 		var that = this;
+		var _plantform = this._plantform;
 		var childrens = getByToggler(el,this._plantform);
 		if(immediate){
 			handle();
@@ -182,7 +199,10 @@
 		function handle(){
 			for(i=0;i<childrens.length;i++){
 				var child = childrens[i];
-				var clazz = child.getAttribute('toggler-'+that._plantform);
+				var clazz = child.getAttribute('toggler-'+ _plantform);
+				if(!clazz){
+					continue;
+				}
 				clazz = clazz.split(" ");
 				for(var j=0;j<clazz.length;j++){
 					var cl = clazz[j];
@@ -219,10 +239,19 @@
 		}
 	}
 
+	ScreenSlider.prototype.configPlantform = function(){
+		if(this.$container.offsetWidth>768){
+			return 'desktop';
+		}else{
+			return 'mobile';
+		}
+	}
+
 	ScreenSlider.prototype.noop = function(){};
 
 	ScreenSlider.prototype.handerTouch = function(i){
 		var that = this;
+		//touch or mouse 事件
 		var startEvent = isMobile?'touchstart':'mousedown';
 		var endEvent = isMobile?'touchend':'mouseup';
 		var startPoint,endPoint,target,edgeChange;
@@ -243,23 +272,47 @@
 				return; //距离太小默认为是点击
 			}
 			target = (startPoint - endPoint > 0) ? that.current+1 : that.current -1;
-			edgeChange = that.repeat && (target<0 || target>=that._length) ? true:false;
-			target = target<0?
-								(that.repeat?that._length-1:-1):target>=that._length?
-									(that.repeat?0:-1):target; //target 返回-1则不做任何变化
+			edgeChange = parseEdge(target);
+			target = parseTarget(target);
 
 			that.pagerTo(target,edgeChange);
 		});
-		bind(global,'resize',function(e){
-			debounce(that.resizeDelay,function(){
-				that.toggler(that.$items[that.current],'dismiss');
-				that._itemsState = [];
-				setTimeout(function(){
-					that.init();
-				},0);
+		//滚轮事件
+		var debounceScrollWheel = debounce(that.scrollWheelDelay,handleMouseWheel);
+		bind(this.$container,'mousewheel',debounceScrollWheel);
+		bind(this.$container,'DOMMouseScroll',debounceScrollWheel);
+		function handleMouseWheel(e){
+			var event = getEvent(e);
+			var delta = getWheelDelta(event);
+			var target,edgeChange;
+			target = delta>0 ? that.current+1 : that.current -1;
+			edgeChange = parseEdge(target);
+			target = parseTarget(target);
+			that.pagerTo(target,edgeChange);	
+		}
+		function parseEdge(target){
+			return that.repeat && (target<0 || target>=that._length) ? true:false;
+		}
+		function parseTarget(target){
+			target = target<0?(that.repeat?that._length-1:-1):target>=that._length?
+									(that.repeat?0:-1):target; //target 返回-1则不做任何变化
+			return target;
+		}
+		//resize事件
+		bind(global,'resize',debounce(that.resizeDelay,resize));
+		function resize(e){
+			if(that.configPlantform() !== that._plantform){
+				that.toggler(that.$items[that.current],'dismiss',true);
+				that._plantform = that.configPlantform();
+				that.setup();
+			}
+			that._itemsState = [];
+			setTimeout(function(){
 				that.onResize();
-			});
-		})
+				that.init();
+			},0)
+			
+		}
 	}
 
 	ScreenSlider.prototype.handlerPager = function () {
@@ -369,7 +422,7 @@
 				transformStr = 'translate3d(0, ' + end + 'px, 0)';
 				transitionWriter(item,that.duration);
 				transformWriter(item,transformStr);
-			},10) //给一定的时间确保初始化位置完成
+			},30) //给一定的时间确保初始化位置完成
 
 		}else{
 			var transformStr = 'translate3d('+ start +'px, 0, 0)';
