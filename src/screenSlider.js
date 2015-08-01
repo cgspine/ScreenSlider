@@ -115,6 +115,8 @@
 			this.repeat = opts.repeat || false; //是否可以从最后一页回到第一页
 			this.duration = opts.duration || 500;
 			this.resizeDelay = opts.resizeDelay || 30;
+			this.pager = getById(opts.pager || 'pager');
+
 			this.current = 0;
 
 			this._length = this.$items.length;
@@ -255,6 +257,14 @@
 		})
 	}
 
+	ScreenSlider.prototype.handlerPager = function () {
+		if(!this.pager){
+			return;
+		}
+		var pagerList = getByClass(this.pager,"pager-list-item");
+		var pagerIndicator =getByClass(this.pager,"pager-current-indicator")[0];
+	};
+
 	//动画
 	ScreenSlider.prototype.moveTo = function(target,edgeChange){
 		if(target == -1){
@@ -347,6 +357,7 @@
 
 		}
 	}
+
 	function transformWriter(item,transform){
 		item.style['-webkit-transform'] = transform;
 		item.style['-ms-transform'] = transform;
