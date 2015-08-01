@@ -1,34 +1,11 @@
 (function(global,DOC){
 
 	var W3C = DOC.dispatchEvent;
-	var ielow = '\v' == 'v' || global.msPerformance;
+	var ie678 =  '\v' == 'v';
+	var ie9 = DOC.documentMode && DOC.documentMode == 9;
+	var ielow = ie678 || ie9;
 	var hasOwn = Object.prototype.hasOwnProperty;
 	var isMobile = /iPad|iPhone|android/i.test(navigator.userAgent);
-
-	/**
-	 *
-	 * @param receiver
-	 * @param supplier
-	 * @returns {*}
-	 */
-	function mix(receiver,supplier){
-			var args = [].slice.call(arguments),
-					i = 1,
-					key,
-					ride = typeof args[args.length-1] === 'boolean'?args.pop():true;
-			if(args.length === 1){
-					receiver =!this.window?this:{};
-					i=0;
-			}
-			while(supplier = args[i++]){
-					for(key in supplier){
-							if(hasOwn.call(supplier,key) && (ride || (key in supplier))){
-									receiver[key] = supplier[key];
-							}
-					}
-			}
-			return receiver;
-	}
 
 	var bind = W3C ? function(el, type, fn, phase) {
             el.addEventListener(type, fn, !!phase);
@@ -138,9 +115,9 @@
 			this.repeat = opts.repeat || false; //是否可以从最后一页回到第一页
 			this.duration = opts.duration || 500;
 			this.resizeDelay = opts.resizeDelay || 30;
+			this.current = 0;
 
 			this._length = this.$items.length;
-			this._current = 0;
 			this._size = 0;
 			this._itemsState = [];
 			this._plantform = isMobile?'mobile':'desktop';
@@ -155,15 +132,14 @@
 	ScreenSlider.prototype.init = function(){
 		this._size = this.orientation === 'vertical'? this.$container.offsetHeight : this.$container.offsetWidth;
 		this.plantform = isMobile?'mobile':'desktop';
-		this.present(this._current,'noop',true);
+		this.present(this.current,'noop',true);
 		console.log(ielow);
-		console.log(global.msPerformance);
 	}
 
 	ScreenSlider.prototype.present = function(i,type,immediate){
 		var that = this;
-		this._current = i;
-		var item = this.$items[this._current];
+		this.current = i;
+		var item = this.$items[this.current];
 		if(this._itemsState[i]!==1){
 			this._itemsState[i] = 1;
 			item.style.position = 'absolute';
@@ -207,7 +183,7 @@
 					}
 					if(type === 'present'){
 						addClass(child,cl);
-						that.emit('onPresent',that._current);
+						that.emit('onPresent',that.current);
 					}else{
 						removeClass(child,cl);
 						that.emit('onDismiss',i);
@@ -255,7 +231,10 @@
 			}else{
 				endPoint = getEvent(e).pageX;
 			}
-			target = (startPoint - endPoint > 0) ? that._current+1 : that._current -1;
+			if(Math.abs(endPoint-startPoint)<10){
+				return; //距离太小默认为是点击
+			}
+			target = (startPoint - endPoint > 0) ? that.current+1 : that.current -1;
 			edgeChange = that.repeat && (target<0 || target>=that._length) ? true:false;
 			target = target<0?
 								(that.repeat?that._length-1:-1):target>=that._length?
@@ -266,7 +245,7 @@
 
 		bind(global,'resize',function(e){
 			debounce(that.resizeDelay,function(){
-				that.toggler(that.$items[that._current],'dismiss');
+				that.toggler(that.$items[that.current],'dismiss');
 				that._itemsState = [];
 				setTimeout(function(){
 					that.init();
@@ -281,7 +260,7 @@
 		if(target == -1){
 			return;
 		}
-		var now = this._current;
+		var now = this.current;
 		var isFront = target - now > 0 ? true : false;
 		var dType = isFront?(edgeChange?'frontOut':'backOut'): (edgeChange?'backOut':'frontOut');
 		var pType = isFront?(edgeChange?'backIn':'frontIn'): (edgeChange?'frontIn':'backIn');
@@ -380,24 +359,48 @@
 	}
 
 	function animByPosition(item,type,start,end,speed,duration){
+		if(item.timer){
+			clearTimeout(item.timer);
+			item.itemer = null;
+		}
 		var cellTime =  duration/speed;
 		var style = item.style;
 		style[type] = start + 'px';
 		speed = (start>end && speed>0) ? -1*speed : (speed<0?-1*speed:speed);
-		var positive = speed >0 ? true : false;
-		var animator = setTimeout(function(){
+		var positive = speed >=0 ? true : false;
+		item.timer = function(){
 			start += speed;
 			style[type] = start + 'px';
 			if((start>=end && positive)||(start<=end && !positive)){
+				console.log('fuck');
 				style[type] = end + 'px';
-				clearTimeout(animator);
-				animator = null;
+				clearTimeout(item.timer);
+				item.timer = null;
 			}
-		},cellTime);
-
+			setTimeout(item.timer,cellTime);
+		}
+		item.timer();
 	}
 
 	global.ScreenSlider = ScreenSlider;
+
+	global.tool = {
+		getById:getById,
+		getByClass:getByClass,
+		getByToggler:getByToggler,
+		bind:bind,
+		unbind:unbind,
+		hasClass:hasClass,
+		addClass:addClass,
+		removeClass:removeClass,
+		togglerClass:togglerClass,
+		transformWriter:transformWriter,
+		transitionWriter:transitionWriter,
+		getEvent:getEvent,
+		getTarget:getTarget,
+		animByPosition:animByPosition
+	}
+
 
 
 })(self,self.document);

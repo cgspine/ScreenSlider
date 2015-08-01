@@ -5,10 +5,18 @@
     <title>ScreenSlider</title>
     <style>
       *{margin:0;padding:0;}
+      ul,li{list-style: none;}
       html,body,.container{
         height:100%;
         overflow: hidden;
       }
+
+
+      .pager{position:absolute;right:20px;top:50%;margin-top:-45px;height:90px;width:10px;}
+      .pager-list-item{margin-bottom:30px;width:10px;height:10px;background-color: #eee;border-radius: 50%;cursor: pointer;}
+      .pager-current-indicator{width:10px;height:10px;background-color: #fff;border-radius: 50%;position:absolute;left:0;display: none;z-index: 100;}
+
+
       .a{width:100px;height:100px;background: #00f;position: absolute;opacity:0;}
       .item-1-1{left:10px;top:10px;transform: translate(30px,0);}
       .item-1-2{left:200px;top:30px;transform: translate(0,50px);}
@@ -43,9 +51,39 @@
           <div class="d item-3-4" toggler-desktop="translate"></div>
       </div>
     </div>
+    <div class="pager" id="pager">
+      <ul class="pager-list">
+        <li class="pager-list-item"></li>
+        <li class="pager-list-item"></li>
+        <li class="pager-list-item"></li>
+      </ul>
+      <div class="pager-current-indicator"></div>
+    </div>
     <script src="../src/screenSlider.js" type="text/javascript"></script>
     <script>
-      new ScreenSlider({repeat:true});
+      var mScreenSlider = new ScreenSlider({
+        repeat:true
+      });
+      var dom = document;
+      var tool = window.tool;
+      var pager = tool.getById("pager");
+      var pagerList = tool.getByClass(pager,"pager-list-item");
+      var pagerIndicator = tool.getByClass(pager,"pager-current-indicator")[0];
+      var current = mScreenSlider.current;
+      var indecatorTop = 40*current;
+      pagerIndicator.style.top = indecatorTop + 'px';
+      pagerIndicator.style.display = "block";
+      console.log(pagerList);
+      for(var i=0;i<pagerList.length;i++){
+        (function(){
+              var j=i;
+              var item = pagerList[j];
+            item.onclick = function(){
+              tool.animByPosition(pagerIndicator,'top',40*mScreenSlider.current,40*j,2,30);
+              mScreenSlider.moveTo(j);
+            }
+        })();
+      }
     </script>
   </body>
 </html>
