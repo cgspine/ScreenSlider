@@ -2,8 +2,9 @@
 
 	var W3C = DOC.dispatchEvent;
 	var ie678 =  '\v' == 'v';
-	var ie9 = DOC.documentMode && DOC.documentMode == 9;
+	var ie9 = DOC.documentMode && DOC.documentMode === 9;
 	var ielow = ie678 || ie9;
+
 	var hasOwn = Object.prototype.hasOwnProperty;
 	var isMobile = /iPad|iPhone|android/i.test(navigator.userAgent);
 
@@ -101,7 +102,10 @@ var debounce = function(delay,callback){
 }
 
 function getEvent(event){
-	return event ? event : window.event;
+	if(isMobile && event.touches.length){
+		return event.touches[0];
+	}
+	return 	event ? event : window.event;
 }
 
 function getTarget(event){
@@ -119,22 +123,23 @@ function getWheelDelta (event) {
 
 	function ScreenSlider(opts){
 		  opts = opts || {};
-			this.$container = getById(opts.container||'container');//container
-			this.$items = getByClass(this.$container,opts.items||'item');//item类
-			this.activeClass = opts.activeClass || 'item-active';//item toggler类
-			this.orientation = opts.orientation || 'vertical';//滚动方向
-			this.onPresent = opts.onPresent || this.noop; //展示item的回调
-			this.onDismiss = opts.onDismiss || this.noop; //隐藏item的回调
-			this.onResize = opts.onResize || this.noop; //窗口resize时调用函数
-			this.repeat = opts.repeat || false; //是否可以从最后一页回到第一页
-			this.duration = opts.duration || 500;
-			this.resizeDelay = opts.resizeDelay || 30;
-			this.scrollWheelDelay = opts.scrollWheelDelay || 200;
+			this.$container = getById(opts.container||'container');                   //container
+			this.$items = getByClass(this.$container,opts.items||'item');							//item类
+			this.activeClass = opts.activeClass || 'item-active';											//item toggler类
+			this.orientation = opts.orientation || 'vertical';												//滚动方向
+			this.onPresent = opts.onPresent || this.noop; 														//展示item的回调
+			this.onDismiss = opts.onDismiss || this.noop; 														//隐藏item的回调
+			this.onResize = opts.onResize || this.noop; 															//窗口resize时调用函数
+			this.repeat = opts.repeat || false; 																			//是否可以从最后一页回到第一页
+			this.duration = opts.duration || 500;																			//滑动时间
+			this.resizeDelay = opts.resizeDelay || 30;																//resize 延迟执行时间（debounce）
+			this.scrollWheelDelay = opts.scrollWheelDelay || 200;											//滚轮延迟执行时间(debounce)
 
-			this.pager = getById(opts.pager || 'pager');
-			this.pagerDistance = opts.pagerParam || 40;
-			this.pagerOrientation = opts.pagerOrientation || 'vertical';
-			this.pagerIndicator = this.pager && getByClass(this.pager,"pager-current-indicator")[0];
+			this.pager = getById(opts.pager || 'pager');															//pager
+			this.pagerDistance = opts.pagerParam || 40;																//pager item距离
+			this.pagerOrientation = opts.pagerOrientation || 'vertical';							//pager 显示方向
+			this.pagerIndicator = this.pager &&
+														getByClass(this.pager,"pager-current-indicator")[0];//pager 当前item指示元素
 
 
 			this.current = 0;
@@ -143,6 +148,7 @@ function getWheelDelta (event) {
 			this._size = 0;
 			this._itemsState = [];
 			this._factory = [];
+
 			this.init();
 			this.setup();
 	}
@@ -254,6 +260,7 @@ function getWheelDelta (event) {
 		//touch or mouse 事件
 		var startEvent = isMobile?'touchstart':'mousedown';
 		var endEvent = isMobile?'touchend':'mouseup';
+		var moveEvent = isMobile?'touchmove':'mousemove'
 		var startPoint,endPoint,target,edgeChange;
 		bind(this.$container,startEvent,function(e){
 			if(that.orientation === 'vertical'){
@@ -262,12 +269,21 @@ function getWheelDelta (event) {
 				startPoint = getEvent(e).pageX;
 			}
 		});
-		bind(this.$container,endEvent,function(e){
+		bind(this.$container,moveEvent,function(e){
 			if(that.orientation === 'vertical'){
 				endPoint = getEvent(e).pageY;
 			}else{
 				endPoint = getEvent(e).pageX;
 			}
+		})
+		bind(this.$container,endEvent,function(e){
+
+			//if(that.orientation === 'vertical'){
+			//	endPoint = getEvent(e).pageY;
+			//}else{
+			//	endPoint = getEvent(e).pageX;
+			//}
+			//touch好像无法拿到endEvent的位置，所以放在了moveEvent中
 			if(Math.abs(endPoint-startPoint)<10){
 				return; //距离太小默认为是点击
 			}
@@ -288,7 +304,7 @@ function getWheelDelta (event) {
 			target = delta>0 ? that.current+1 : that.current -1;
 			edgeChange = parseEdge(target);
 			target = parseTarget(target);
-			that.pagerTo(target,edgeChange);	
+			that.pagerTo(target,edgeChange);
 		}
 		function parseEdge(target){
 			return that.repeat && (target<0 || target>=that._length) ? true:false;
@@ -311,19 +327,18 @@ function getWheelDelta (event) {
 				that.onResize();
 				that.init();
 			},0)
-			
+
 		}
 	}
 
 	ScreenSlider.prototype.handlerPager = function () {
+		//1.如果不存在pager,直接返回
 		if(!this.pager){
 			return;
 		}
+		//2.存在pager,则绑定点击事件
 		var that = this;
 		var pagerList = getByClass(this.pager,"pager-list-item");
-		var type = this.pagerOrientation == "horizontal"?"left" : "top";
-		this.pagerIndicator.style.top = this.current * this.pagerDistance + 'px';
-		this.pagerIndicator.style.display = "block";
 		for(var i=0;i<pagerList.length;i++){
 			(function(){
 						var j=i;
@@ -333,6 +348,14 @@ function getWheelDelta (event) {
 					}
 			})();
 		}
+		//3.如果不存在pagerIndicator,返回
+		if(!this.pagerIndicator){
+			return;
+		}
+		//4.如果存在pagerIndicator,则根据pagerOrientation控制显示位置
+		var type = this.pagerOrientation == "horizontal"?"left" : "top";
+		this.pagerIndicator.style.top = this.current * this.pagerDistance + 'px';
+		this.pagerIndicator.style.display = "block";
 	};
 
 	//动画
@@ -349,9 +372,13 @@ function getWheelDelta (event) {
 	}
 
 	ScreenSlider.prototype.pagerTo = function (target,edgeChange) {
-		var type = this.pagerOrientation == "horizontal" ? "left" : 'top';
-		if(this.pagerIndicator){
+		if(this.pager && this.pagerIndicator){
+			//如果存在pagerIndicator,则对pagerIndicator做动画并对item做动画
+			var type = this.pagerOrientation == "horizontal" ? "left" : 'top';
 			animByPosition(this.pagerIndicator,type,this.pagerDistance*this.current,this.pagerDistance*target,2,30);
+			this.moveTo(target,edgeChange);
+		}else{
+			//不存在pagerIndicator,则直接对item做动画
 			this.moveTo(target,edgeChange);
 		}
 
@@ -379,6 +406,7 @@ function getWheelDelta (event) {
 				}
 			}
 		}
+		console.log("ff");
 		return {
 			frontIn:function(item){
 				that.animByTransform(item,that._size,0);
@@ -442,6 +470,7 @@ function getWheelDelta (event) {
 		item.style['-ms-transform'] = transform;
 		item.style.transform = transform;
 	}
+
 	function transitionWriter(item,duration){
 		item.style['-webkit-transition'] = duration + 'ms';
 		item.style['-ms-transition'] = duration + 'ms';
@@ -490,7 +519,4 @@ function getWheelDelta (event) {
 		getTarget:getTarget,
 		animByPosition:animByPosition
 	}
-
-
-
 })(self,self.document);
